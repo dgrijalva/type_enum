@@ -14,7 +14,7 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
     };
 
     let mut from_impls = Vec::new();
-    let mut type_enum_impls = Vec::new();
+    let mut trait_impls = Vec::new();
 
     for variant in &data.variants {
         let variant_name = &variant.ident;
@@ -33,23 +33,33 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
                     }
                 });
 
-                // Generate TypeEnum implementation
-                type_enum_impls.push(quote! {
-                    impl crate::TypeEnum<#field_type> for #name {
-                        fn value(&self) -> Option<&#field_type> {
+                // Generate Value implementation for &'a T
+                trait_impls.push(quote! {
+                    impl<'a> crate::Value<'a, &'a #field_type> for #name {
+                        fn value(&'a self) -> Option<&'a #field_type> {
                             match self {
                                 #name::#variant_name(ref val) => Some(val),
                                 _ => None,
                             }
                         }
+                    }
+                });
 
-                        fn value_mut(&mut self) -> Option<&mut #field_type> {
+                // Generate ValueMut implementation for &'a mut T
+                trait_impls.push(quote! {
+                    impl<'a> crate::ValueMut<'a, &'a mut #field_type> for #name {
+                        fn value_mut(&'a mut self) -> Option<&'a mut #field_type> {
                             match self {
                                 #name::#variant_name(ref mut val) => Some(val),
                                 _ => None,
                             }
                         }
+                    }
+                });
 
+                // Generate IntoValue implementation for T
+                trait_impls.push(quote! {
+                    impl crate::IntoValue<#field_type> for #name {
                         fn into_value(self) -> Result<#field_type, Self> {
                             match self {
                                 #name::#variant_name(val) => Ok(val),
@@ -76,28 +86,42 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
                     }
                 });
 
-                // Generate field destructuring patterns
+                // Generate field names for destructuring
                 let field_names = (0..fields.unnamed.len())
                     .map(|i| {
                         syn::Ident::new(&format!("field_{}", i), proc_macro2::Span::call_site())
                     })
                     .collect::<Vec<_>>();
 
-                // Generate TypeEnum implementation
-                // Note: value() and value_mut() return None for multi-field variants
-                // since we can't safely return references to reconstructed tuples
-                type_enum_impls.push(quote! {
-                    impl crate::TypeEnum<#tuple_type> for #name {
-                        fn value(&self) -> Option<&#tuple_type> {
-                            // Can't return reference to temporary tuple, so return None
-                            None
+                // Generate Value implementation for (&'a T1, &'a T2, ...)
+                let ref_tuple_type = quote! { (#(&'a #field_types),*) };
+                trait_impls.push(quote! {
+                    impl<'a> crate::Value<'a, #ref_tuple_type> for #name {
+                        fn value(&'a self) -> Option<#ref_tuple_type> {
+                            match self {
+                                #name::#variant_name(#(ref #field_names),*) => Some((#(#field_names),*)),
+                                _ => None,
+                            }
                         }
+                    }
+                });
 
-                        fn value_mut(&mut self) -> Option<&mut #tuple_type> {
-                            // Can't return reference to temporary tuple, so return None
-                            None
+                // Generate ValueMut implementation for (&'a mut T1, &'a mut T2, ...)
+                let mut_ref_tuple_type = quote! { (#(&'a mut #field_types),*) };
+                trait_impls.push(quote! {
+                    impl<'a> crate::ValueMut<'a, #mut_ref_tuple_type> for #name {
+                        fn value_mut(&'a mut self) -> Option<#mut_ref_tuple_type> {
+                            match self {
+                                #name::#variant_name(#(ref mut #field_names),*) => Some((#(#field_names),*)),
+                                _ => None,
+                            }
                         }
+                    }
+                });
 
+                // Generate IntoValue implementation for (T1, T2, ...)
+                trait_impls.push(quote! {
+                    impl crate::IntoValue<#tuple_type> for #name {
                         fn into_value(self) -> Result<#tuple_type, Self> {
                             match self {
                                 #name::#variant_name(#(#field_names),*) => Ok((#(#field_names),*)),
@@ -118,7 +142,7 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         #(#from_impls)*
-        #(#type_enum_impls)*
+        #(#trait_impls)*
     };
 
     TokenStream::from(expanded)

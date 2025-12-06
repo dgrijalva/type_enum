@@ -13,47 +13,27 @@ enum MyErrors {
 
 This library is a helper for these types. It provides a derive macro which:
 
-- automatically implements `From<T>` for each type present in the enum
-- automatically implements the helper trait `TypeEnum<T>` for easily unpacking values
+- automatically implements From<T> for each type present in the enum.
+- automatically implements the helper trait `TypeEnum` for easily unpacking values
 
-## Usage
+Requirements:
 
-```rust
-use type_enum::TypeEnum;
+- each variant of the enum must hold a unique type
+- tuples values are supported, but not struct style variants
 
-#[derive(TypeEnum)]
-enum Value {
-    Text(String),
-    Number(i64),
-    Pair(u8, u8),
-}
+## A cool trick for function argument overloading
 
-// Create values using From conversions
-let text: Value = "hello".to_string().into();
-let number: Value = 42i64.into();
-let tuple: Value = (1u8, 2u8).into();
-
-// Extract values using TypeEnum trait methods
-assert_eq!(text.value(), Some(&"hello".to_string()));
-assert_eq!(number.value(), Some(&42));
-let wrong_type: Option<&String> = number.value();
-assert_eq!(wrong_type, None); // wrong type
-
-// Extract by value
-let extracted: String = text.into_value().unwrap();
-assert_eq!(extracted, "hello");
-
-// Modify values
-let mut text_val: Value = "hello".to_string().into();
-if let Some(s) = text_val.value_mut() {
-    s.push_str(" world");
-}
-assert_eq!(text_val.value(), Some(&"hello world".to_string()));
 ```
+#[derive(TypeEnum)]
+enum FooInputTypes{
+  String(String),
+  Num(u16),
+}
 
-## Requirements
-
-- Each variant of the enum must hold a unique type
-- Tuple values are supported, but not struct style variants
-- No unsafe code is used - everything is compile-time safe
-- No `'static` bounds required
+fn foo(data : impl Into<FooInputTypes> ) {
+  match data.into() {
+    FooInputTypes::String(val) => println!("You gave me a string: {val}"),
+    FooInputTypes::Num(val) => println!("You gave me a number: {val}"),
+  }
+}
+```
