@@ -23,7 +23,7 @@ Requirements:
 
 ## A cool trick for function argument overloading
 
-```
+```rust
 #[derive(TypeEnum)]
 enum FooInputTypes{
   String(String),
