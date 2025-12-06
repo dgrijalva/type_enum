@@ -13,13 +13,37 @@ enum MyErrors {
 
 This library is a helper for these types. It provides a derive macro which:
 
-- automatically implements From<T> for each type present in the enum.
+- automatically implements `From<T>` for each type present in the enum.
 - automatically implements the helper trait `TypeEnum` for easily unpacking values
 
 Requirements:
 
 - each variant of the enum must hold a unique type
 - tuples values are supported, but not struct style variants
+
+## Usage tips
+
+One really common way I use this pattern is with error types:
+
+```rust
+fn do_cool_stuff() -> Result<Pants, MyErrors> {
+    // ...
+    // this conversion just works
+    let data = serde_json::from_str(foo)?;
+    // ...
+}
+```
+
+You can use the helper traits to get some conditional unwrapping:
+
+```rust
+fn something() -> Option<Sting> {
+    // ...
+    let foo : &usize = possible_types.value()?;
+    // ...
+}
+
+```
 
 ## A cool trick for function argument overloading
 
