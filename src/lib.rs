@@ -191,4 +191,24 @@ mod test {
         assert_eq!(&foo("foo".to_string()), "You gave me a string: foo");
         assert_eq!(&foo(42u16), "You gave me a number: 42");
     }
+
+    #[test]
+    fn test_skip_attribute() {
+        #[allow(unused)]
+        #[derive(TypeEnum)]
+        enum FooTypesWithSkip {
+            Foo(String),
+            Bar(usize),
+            #[type_enum(skip)]
+            Baz(String),
+        }
+
+        // Verify that Foo(String) gets the From impl, but Baz(String) doesn't
+        let foo: FooTypesWithSkip = "hello".to_string().into();
+        assert!(matches!(foo, FooTypesWithSkip::Foo(_)));
+
+        // Verify that value() works for the non-skipped variant
+        let val: Option<&String> = foo.value();
+        assert_eq!(val, Some(&"hello".to_string()));
+    }
 }

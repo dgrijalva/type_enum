@@ -1,8 +1,36 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Index, parse_macro_input};
+use std::collections::HashMap;
+use syn::{Data, DeriveInput, Fields, Index, Meta, parse_macro_input};
 
-#[proc_macro_derive(TypeEnum)]
+/// Check if a variant has the #[type_enum(skip)] attribute
+fn has_skip_attribute(variant: &syn::Variant) -> bool {
+    for attr in &variant.attrs {
+        if attr.path().is_ident("type_enum") {
+            if let Meta::List(meta_list) = &attr.meta {
+                let tokens = meta_list.tokens.to_string();
+                if tokens == "skip" {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Get a canonical string representation of a type for duplicate detection
+fn type_key(fields: &Fields) -> String {
+    match fields {
+        Fields::Unnamed(fields) if fields.unnamed.len() == 1 => quote!(#fields).to_string(),
+        Fields::Unnamed(fields) => {
+            let field_types: Vec<_> = fields.unnamed.iter().map(|f| &f.ty).collect();
+            quote!((#(#field_types),*)).to_string()
+        }
+        _ => String::new(),
+    }
+}
+
+#[proc_macro_derive(TypeEnum, attributes(type_enum))]
 pub fn type_enum_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -13,10 +41,42 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
         _ => panic!("TypeEnum can only be derived for enums"),
     };
 
+    // First pass: collect types and check for duplicates (excluding skipped variants)
+    let mut seen_types: HashMap<String, &syn::Variant> = HashMap::new();
+    for variant in &data.variants {
+        if has_skip_attribute(variant) {
+            continue;
+        }
+
+        let key = type_key(&variant.fields);
+        if !key.is_empty() {
+            if let Some(first_variant) = seen_types.get(&key) {
+                let first_name = &first_variant.ident;
+                let second_name = &variant.ident;
+                return syn::Error::new_spanned(
+                    variant,
+                    format!(
+                        "duplicate type in enum: variants `{}` and `{}` both hold the same type(s). \
+                        Each variant must hold a unique type. Use #[type_enum(skip)] to exclude a variant.",
+                        first_name, second_name
+                    ),
+                )
+                .to_compile_error()
+                .into();
+            }
+            seen_types.insert(key, variant);
+        }
+    }
+
     let mut from_impls = Vec::new();
     let mut trait_impls = Vec::new();
 
     for variant in &data.variants {
+        // Skip variants with #[type_enum(skip)] attribute
+        if has_skip_attribute(variant) {
+            continue;
+        }
+
         let variant_name = &variant.ident;
 
         match &variant.fields {

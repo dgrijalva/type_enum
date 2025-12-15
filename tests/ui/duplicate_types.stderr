@@ -1,0 +1,5 @@
+error: duplicate type in enum: variants `Foo` and `Baz` both hold the same type(s). Each variant must hold a unique type. Use #[type_enum(skip)] to exclude a variant.
+ --> tests/ui/duplicate_types.rs:7:5
+  |
+7 |     Baz(String),
+  |     ^^^^^^^^^^^
