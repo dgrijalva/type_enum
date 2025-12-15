@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Index};
+use syn::{Data, DeriveInput, Fields, Index, parse_macro_input};
 
 #[proc_macro_derive(TypeEnum)]
 pub fn type_enum_derive(input: TokenStream) -> TokenStream {
@@ -38,7 +38,7 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
                     impl<'a> crate::Value<'a, &'a #field_type> for #name {
                         fn value(&'a self) -> Option<&'a #field_type> {
                             match self {
-                                #name::#variant_name(ref val) => Some(val),
+                                #name::#variant_name(val) => Some(val),
                                 _ => None,
                             }
                         }
@@ -50,7 +50,7 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
                     impl<'a> crate::ValueMut<'a, &'a mut #field_type> for #name {
                         fn value_mut(&'a mut self) -> Option<&'a mut #field_type> {
                             match self {
-                                #name::#variant_name(ref mut val) => Some(val),
+                                #name::#variant_name(val) => Some(val),
                                 _ => None,
                             }
                         }
@@ -99,7 +99,7 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
                     impl<'a> crate::Value<'a, #ref_tuple_type> for #name {
                         fn value(&'a self) -> Option<#ref_tuple_type> {
                             match self {
-                                #name::#variant_name(#(ref #field_names),*) => Some((#(#field_names),*)),
+                                #name::#variant_name(#(#field_names),*) => Some((#(#field_names),*)),
                                 _ => None,
                             }
                         }
@@ -112,7 +112,7 @@ pub fn type_enum_derive(input: TokenStream) -> TokenStream {
                     impl<'a> crate::ValueMut<'a, #mut_ref_tuple_type> for #name {
                         fn value_mut(&'a mut self) -> Option<#mut_ref_tuple_type> {
                             match self {
-                                #name::#variant_name(#(ref mut #field_names),*) => Some((#(#field_names),*)),
+                                #name::#variant_name(#(#field_names),*) => Some((#(#field_names),*)),
                                 _ => None,
                             }
                         }
