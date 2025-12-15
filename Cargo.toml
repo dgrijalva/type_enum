@@ -3,6 +3,12 @@ name = "type_enum"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+authors = ["Dave Grijalva <grijalva@gmail.com>"]
+description = "A derive macro for enums that provides automatic From implementations and helper traits for type unpacking"
+readme = "README.md"
+repository = "https://github.com/dgrijalva/type_enum"
+keywords = ["enum", "derive", "macro", "from", "types", "into"]
+categories = ["rust-patterns", "development-tools::procedural-macro-helpers"]
 
 [workspace]
 members = [".", "macros"]
