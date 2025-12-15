@@ -54,6 +54,19 @@ fn something() -> Option<Sting> {
 
 ```
 
+You can work around the "one variant per type" constraint by using `skip`:
+
+```rust
+#[derive(TypeEnum)]
+enum MyErrors {
+    Serialization(serde_json::Error),
+    Http(hyper::Error),
+    Other(String),
+    #[type_enum(skip)]
+    SpecialCase(String),
+}
+```
+
 ## A cool trick for function argument overloading
 
 ```rust
